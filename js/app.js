@@ -480,10 +480,10 @@ function updatePostureUI(r){
     $('headStatus').textContent=headSt==='good'?'Good':'Adjust';
     $('headStatus').className='metric-status '+(headSt==='good'?'good':'warning');
 
-    $('screenDist').textContent = distSt==='good'?'Perfect':distSt==='close'?'Too Close':'Too Far';
-    $('distBar').style.width    = distSt==='good'?'80%':distSt==='close'?'98%':'20%';
-    $('distStatus').textContent = distSt==='good'?'Good':'Adjust';
-    $('distStatus').className   = 'metric-status '+(distSt==='good'?'good':'warning');
+    $('screenDist').textContent = distSt==='good' ? 'Optimal' : distSt==='close' ? 'Too Close' : 'Too Far';
+    $('distBar').style.width    = distSt==='good' ? '80%' : distSt==='close' ? '98%' : '35%';
+    $('distStatus').textContent = distSt==='good' ? 'Good' : 'Adjust';
+    $('distStatus').className   = 'metric-status '+(distSt==='good' ? 'good' : 'warning');
 
     $('postureTip').textContent=tip;
 
@@ -670,70 +670,79 @@ function renderStretchList(){
 }
 
 function processStretch(r){
-    if(!S.stretchActive||S.stretchIdx>=STRETCHES.length) return;
-    const cur=STRETCHES[S.stretchIdx];
-    const detected=cur.detect(r);
+    if(!S.stretchActive || S.stretchIdx >= STRETCHES.length) return;
+    const cur = STRETCHES[S.stretchIdx];
+    if(!cur) return;
+    const detected = cur.detect(r);
 
-    if(detected&&!S.holdInterval){
+    if(detected && !S.holdInterval){
         // Begin hold countdown
-        S.holdSec=5;
-        $('holdSec').textContent=5;
-        $('holdCount').style.display='block';
-        $('holdBarWrap').style.display='block';
-        $('holdBarFill').style.width='100%';
-        $('sfbIcon').innerHTML=SVG_ICONS.check;
-        $('sfbTitle').textContent='Stretch Detected — Hold Position';
-        $('sfbDesc').textContent=`Maintain holding the ${cur.name}...`;
+        S.holdSec = 5;
+        $('holdSec').textContent = 5;
+        $('holdCount').style.display = 'block';
+        $('holdBarWrap').style.display = 'block';
+        $('holdBarFill').style.width = '100%';
+        $('sfbIcon').innerHTML = SVG_ICONS.check;
+        $('sfbTitle').textContent = 'Stretch Detected — Hold Position';
+        $('sfbDesc').textContent = `Maintain holding the ${cur.name}...`;
 
-        S.holdInterval=setInterval(()=>{
+        S.holdInterval = setInterval(()=>{
             S.holdSec--;
-            $('holdSec').textContent=S.holdSec;
-            $('holdBarFill').style.width=(S.holdSec/5)*100+'%';
-            if(S.holdSec<=0){
-                clearInterval(S.holdInterval); S.holdInterval=null;
-                $('holdCount').style.display='none';
-                $('holdBarWrap').style.display='none';
+            $('holdSec').textContent = S.holdSec;
+            $('holdBarFill').style.width = (S.holdSec/5)*100+'%';
+            if(S.holdSec <= 0){
+                clearInterval(S.holdInterval);
+                S.holdInterval = null;
+                $('holdCount').style.display = 'none';
+                $('holdBarWrap').style.display = 'none';
                 finishStretch(3); // perfect hold → 3 stars
             }
-        },1000);
-    } else if(!detected&&S.holdInterval){
+        }, 1000);
+    } else if(!detected && S.holdInterval){
         // Broke the hold
-        const heldFor=5-S.holdSec;
-        clearInterval(S.holdInterval); S.holdInterval=null;
-        $('holdCount').style.display='none';
-        $('holdBarWrap').style.display='none';
-        $('sfbIcon').innerHTML=SVG_ICONS.warning;
-        $('sfbTitle').textContent='Hold Interrupted';
-        $('sfbDesc').textContent=`Re-engage position: ${cur.desc}`;
-        if(heldFor>=3) finishStretch(2); // partial → 2 stars
-        else if(heldFor>=1) finishStretch(1); // short → 1 star
+        const heldFor = 5 - S.holdSec;
+        clearInterval(S.holdInterval);
+        S.holdInterval = null;
+        $('holdCount').style.display = 'none';
+        $('holdBarWrap').style.display = 'none';
+        $('sfbIcon').innerHTML = SVG_ICONS.warning;
+        $('sfbTitle').textContent = 'Hold Interrupted';
+        $('sfbDesc').textContent = `Re-engage position: ${cur.desc}`;
+        if(heldFor >= 3) finishStretch(2); // partial → 2 stars
+        else if(heldFor >= 1) finishStretch(1); // short → 1 star
         // else: reset and try again (don't count this attempt)
-    } else if(!detected){
-        $('sfbIcon').innerHTML=cur.icon;
-        $('sfbTitle').textContent=cur.name;
-        $('sfbDesc').textContent=cur.desc;
+    } else if(!detected && !S.holdInterval){
+        $('sfbIcon').innerHTML = cur.icon;
+        $('sfbTitle').textContent = cur.name;
+        $('sfbDesc').textContent = cur.desc;
     }
 }
 
 function finishStretch(stars){
-    S.stretchStars[S.stretchIdx]=stars;
+    if(S.stretchIdx >= STRETCHES.length) return;
+    const curIdx = S.stretchIdx;
+    const completedStretch = STRETCHES[curIdx];
+    S.stretchStars[curIdx] = stars;
     S.stretchIdx++;
-    addPoints(10,`${STRETCHES[S.stretchIdx-1].name} completed`,'stretch');
-    S.stretchPoints+=10;
-    $('bdStretch').textContent=S.stretchPoints;
+    addPoints(10, `${completedStretch.name} completed`, 'stretch');
+    S.stretchPoints += 10;
+    $('bdStretch').textContent = S.stretchPoints;
 
-    if(S.stretchIdx>=STRETCHES.length){
+    if(S.stretchIdx >= STRETCHES.length){
         // Full session complete!
-        S.stretchActive=false;
-        addPoints(50,'Full stretch routine completed','award');
-        S.stretchPoints+=50;
-        $('bdStretch').textContent=S.stretchPoints;
-        $('sfbIcon').innerHTML=SVG_ICONS.award;
-        $('sfbTitle').textContent='Routine Completed';
-        $('sfbDesc').textContent='Excellent mobility routine completed. +60 points earned!';
-        $('startStretchBtn').style.display='block';
-        $('startStretchBtn').innerHTML=`${SVG_ICONS.repeat} Restart Routine`;
-        showToast('award','Stretch Complete!','Full routine finished. +60 points earned.');
+        S.stretchActive = false;
+        if(S.holdInterval){ clearInterval(S.holdInterval); S.holdInterval = null; }
+        $('holdCount').style.display = 'none';
+        $('holdBarWrap').style.display = 'none';
+        addPoints(50, 'Full stretch routine completed', 'award');
+        S.stretchPoints += 50;
+        $('bdStretch').textContent = S.stretchPoints;
+        $('sfbIcon').innerHTML = SVG_ICONS.award;
+        $('sfbTitle').textContent = 'Routine Completed';
+        $('sfbDesc').textContent = 'Excellent mobility routine completed. +60 points earned!';
+        $('startStretchBtn').style.display = 'block';
+        $('startStretchBtn').innerHTML = `${SVG_ICONS.repeat} Restart Routine`;
+        showToast('award', 'Stretch Complete!', 'Full routine finished. +60 points earned.');
         checkAchievements();
     }
     renderStretchList();
@@ -805,15 +814,25 @@ const CTXS = {};
 function drawToCanvas(r, canvas, ctx){
     if(!canvas||!ctx) return;
     const vid=$('input_video');
-    if(vid.videoWidth>0&&canvas.width!==vid.videoWidth){
-        canvas.width=vid.videoWidth;
-        canvas.height=vid.videoHeight;
-    }
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(r.image,0,0,canvas.width,canvas.height);
+
+    // Set canvas dimensions from the actual video/image
+    const srcW = r.image?.width || vid.videoWidth || 640;
+    const srcH = r.image?.height || vid.videoHeight || 480;
+    if(canvas.width !== srcW)  canvas.width  = srcW;
+    if(canvas.height !== srcH) canvas.height = srcH;
+
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw video frame mirrored (selfie / natural view)
+    ctx.save();
+    ctx.translate(W, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(r.image, 0, 0, W, H);
+    ctx.restore();
 
     if(r.poseLandmarks){
-        // Draw connections
+        // Draw connections — also mirrored so they align with the flipped video
         const CONN=[
             [LM.NOSE,LM.L_EYE],[LM.NOSE,LM.R_EYE],
             [LM.L_EYE,LM.L_EAR],[LM.R_EYE,LM.R_EAR],
@@ -825,16 +844,16 @@ function drawToCanvas(r, canvas, ctx){
             [LM.L_HIP,LM.L_KNEE],[LM.L_KNEE,LM.L_ANKLE],
             [LM.R_HIP,LM.R_KNEE],[LM.R_KNEE,LM.R_ANKLE]
         ];
-        const W=canvas.width, H=canvas.height;
         ctx.save();
+        // Mirror landmark coordinates: x becomes (1 - x) to match flipped video
         ctx.strokeStyle='#1E5E41';
         ctx.lineWidth=2.5;
         for(const [a,b] of CONN){
             const A=r.poseLandmarks[a], B=r.poseLandmarks[b];
             if(!A||!B||A.visibility<0.3||B.visibility<0.3) continue;
             ctx.beginPath();
-            ctx.moveTo(A.x*W, A.y*H);
-            ctx.lineTo(B.x*W, B.y*H);
+            ctx.moveTo((1 - A.x)*W, A.y*H);
+            ctx.lineTo((1 - B.x)*W, B.y*H);
             ctx.stroke();
         }
         // Draw landmark dots
@@ -842,7 +861,7 @@ function drawToCanvas(r, canvas, ctx){
         for(const p of r.poseLandmarks){
             if(p.visibility<0.3) continue;
             ctx.beginPath();
-            ctx.arc(p.x*W, p.y*H, 3.5, 0, Math.PI*2);
+            ctx.arc((1 - p.x)*W, p.y*H, 3.5, 0, Math.PI*2);
             ctx.fill();
         }
         ctx.restore();
@@ -907,11 +926,12 @@ function onPoseResults(r){
         const stopBtn=$('camStopBtn');
         if(stopBtn) stopBtn.style.display='block';
         showToast('check','Camera Connected!','Biomechanics sensor telemetry is now active.');
-        addActivity('Camera telemetry connected','');
+        addActivity('Camera telemetry connected', '0 pts');
     }
 }
 
 let mediaCamera = null;
+let poseInstance = null; // FIX 3: stored globally so stopCamera() can close/destroy it
 
 function openCameraModal(){
     if (S.cameraReady || S.poseInitialized) {
@@ -928,11 +948,16 @@ function requestCameraPermission(){
         return;
     }
     showToast('camera','Camera Request','Please authorize camera permission in the browser prompt.');
-    navigator.mediaDevices.getUserMedia({ video: true })
+    // Acquire the camera stream and attach it directly to the video element.
+    // Do NOT stop the stream — MediaPipe needs continuous access.
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(stream => {
-            // Stop temporary stream so we don't lock it, and let MediaPipe Pose handle the stream
-            stream.getTracks().forEach(track => track.stop());
-            initPose();
+            const video = $('input_video');
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play().catch(() => {});
+                initPose();
+            };
         })
         .catch(err => {
             showToast('cross','Camera Denied!','Please click the site permissions icon in the address bar to allow Camera.');
@@ -943,41 +968,72 @@ function requestCameraPermission(){
 function initPose(){
     if (S.poseInitialized) return;
     S.poseInitialized = true;
-    const video=$('input_video');
-    const pose=new Pose({
-        locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
+    const video = $('input_video');
+    poseInstance = new Pose({ // FIX 3: global so stopCamera() can close/destroy it
+        locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
     });
-    pose.setOptions({
-        modelComplexity:1,
-        smoothLandmarks:true,
-        enableSegmentation:false,
-        smoothSegmentation:false,
-        minDetectionConfidence:0.5,
-        minTrackingConfidence:0.5
+    poseInstance.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        smoothSegmentation: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
     });
-    pose.onResults(onPoseResults);
+    poseInstance.onResults(onPoseResults);
 
-    mediaCamera=new Camera(video,{
-        onFrame:async()=>{ await pose.send({image:video}); },
-        width:640, height:480
-    });
-    mediaCamera.start().catch(err=>{
-        showToast('cross','Camera Denied!','Please click the site permissions icon in your URL bar and select "Allow" for Camera.');
-        console.error('Camera error:',err);
-    });
+    // Use a rAF loop to feed frames from the already-live video element to MediaPipe.
+    // This avoids MediaPipe's Camera class opening a conflicting second getUserMedia stream.
+    let rafId = null;
+    let poseActive = true;
+
+    async function sendFrame() {
+        if (!poseActive) return;
+        if (video.readyState >= 2 && video.videoWidth > 0) {
+            try {
+                await poseInstance.send({ image: video }); // FIX 3: use global reference
+            } catch (e) {
+                console.warn('Pose send error:', e);
+            }
+        }
+        rafId = requestAnimationFrame(sendFrame);
+    }
+
+    // Store stop function on mediaCamera-like object for compatibility with stopCamera()
+    mediaCamera = {
+        stop: () => {
+            poseActive = false;
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = null;
+            // Stop all tracks on the video element's stream
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }
+    };
+
+    sendFrame();
 }
+
 
 // Fully stops the webcam stream and resets camera UI back to "off" state.
 function stopCamera(){
-    if(mediaCamera){ mediaCamera.stop(); mediaCamera=null; }
-    S.cameraReady=false;
-    S.poseInitialized=false;
-    S.poseResults=null;
+    if (mediaCamera) { mediaCamera.stop(); mediaCamera = null; }
+    // FIX 3: Destroy the MediaPipe Pose WASM instance to free GPU/CPU resources
+    if (poseInstance) { try { poseInstance.close(); } catch(e){} poseInstance = null; }
+    if (S.holdInterval) { clearInterval(S.holdInterval); S.holdInterval = null; }
+    S.cameraReady = false;
+    S.poseInitialized = false;
+    S.poseResults = null;
+    S.fitActive = false;
+    S.stretchActive = false;
 
-    const dot=$('camDot');
-    if(dot) dot.className='cam-dot';
-    const txt=$('camStatusText');
-    if(txt) txt.textContent='Camera Offline';
+    const dot = $('camDot');
+    if (dot) dot.className = 'cam-dot';
+    const txt = $('camStatusText');
+    if (txt) txt.textContent = 'Camera Offline';
     const stopBtn=$('camStopBtn');
     if(stopBtn) stopBtn.style.display='none';
     
@@ -988,7 +1044,7 @@ function stopCamera(){
     $('dashCamPrompt')?.style.setProperty('display', 'block');
 
     showToast('camera','Camera Stopped','Sensor feed has been deactivated.');
-    addActivity('Camera feed disconnected','');
+    addActivity('Camera feed disconnected', '0 pts');
 }
 
 // ============================================================
@@ -1003,11 +1059,17 @@ function updateTimerDisplay(){
 function initPomodoro(){
     $('timerBtn').addEventListener('click',()=>{
         if(S.pomRunning){
-            clearInterval(S.pomInterval); S.pomRunning=false;
-            S.pomSec=25*60; updateTimerDisplay();
+            if(S.pomInterval) clearInterval(S.pomInterval);
+            S.pomInterval=null;
+            S.pomRunning=false;
+            S.pomPausedByEco=false;
+            S.pomSec=25*60;
+            updateTimerDisplay();
             $('timerBtn').textContent='Start';
         } else {
+            if(S.pomInterval) clearInterval(S.pomInterval);
             S.pomRunning=true;
+            S.pomPausedByEco=false;
             $('timerBtn').textContent='Stop';
             S.pomInterval=setInterval(()=>{
                 // Eco mode check when pomodoro is running and camera is offline / no frames
@@ -1017,8 +1079,11 @@ function initPomodoro(){
                 S.pomSec--;
                 updateTimerDisplay();
                 if(S.pomSec<=0){
-                    clearInterval(S.pomInterval); S.pomRunning=false;
-                    S.pomSec=25*60; updateTimerDisplay();
+                    clearInterval(S.pomInterval);
+                    S.pomInterval=null;
+                    S.pomRunning=false;
+                    S.pomSec=25*60;
+                    updateTimerDisplay();
                     $('timerBtn').textContent='Start';
                     $('stretchModal').style.display='flex';
                     showToast('stretch','Break Time!','25 minutes completed — time for a mobility stretch!');
@@ -1090,7 +1155,7 @@ function logWater(amount = 250){
     playWaterSound();
     updateWaterUI();
     addPoints(15, `+${amount}ml Water Logged`, 'water');
-    addActivity(`Drank ${amount}ml water`, `${S.waterMl} / ${S.waterGoal}ml logged`);
+    addActivity(`Logged ${amount}ml water (${S.waterMl}/${S.waterGoal}ml)`, '+15 pts');
     
     if(S.waterMl === S.waterGoal || S.waterMl === S.waterGoal + 250){
         showToast('award', 'Hydration Goal Achieved!', `You reached ${S.waterGoal}ml of water intake today.`);
@@ -1102,21 +1167,16 @@ function logWater(amount = 250){
 function triggerWaterAlert(){
     playWaterSound();
     showToast('water', 'Hydration Interval', '45 minutes elapsed. Hydrate with clean water for optimal cognitive focus.');
-    addActivity('Hydration reminder triggered', 'Time to drink water');
+    addActivity('Hydration interval reminder', '0 pts');
 }
 
 function initWaterReminder(){
     updateWaterUI();
     updateWaterTimerDisplay();
 
-    // Log button in header
+    // Log button in header (explicit button click only)
     $('waterLogBtn')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        logWater(250);
-    });
-
-    // Click on reminder widget to reset timer or quick log
-    $('waterReminderWrap')?.addEventListener('click', () => {
         logWater(250);
     });
 
@@ -1257,11 +1317,33 @@ function updateErgoCalc(){
         svgSight.setAttribute('y2', targetScreenY);
     }
 
-    // Dimension Lines text
+    // Dimension Lines position and text
     const cDim = $('svgChairDimText');
-    if(cDim) cDim.textContent = fmt(chairCm);
+    if(cDim) {
+        cDim.textContent = fmt(chairCm);
+        cDim.setAttribute('y', (300 + chairY) / 2 + 4);
+    }
+    const cArrow = $('svgChairDimArrow');
+    if(cArrow) cArrow.setAttribute('y2', chairY);
+    const cTick = $('svgChairDimTickTop');
+    if(cTick) {
+        cTick.setAttribute('y1', chairY);
+        cTick.setAttribute('y2', chairY);
+    }
+
     const dDim = $('svgDeskDimText');
-    if(dDim) dDim.textContent = fmt(deskCm);
+    if(dDim) {
+        dDim.textContent = fmt(deskCm);
+        dDim.setAttribute('y', (300 + deskY) / 2 + 4);
+    }
+    const dArrow = $('svgDeskDimArrow');
+    if(dArrow) dArrow.setAttribute('y2', deskY);
+    const dTick = $('svgDeskDimTickTop');
+    if(dTick) {
+        dTick.setAttribute('y1', deskY);
+        dTick.setAttribute('y2', deskY);
+    }
+
     const distDim = $('svgDistDimText');
     if(distDim) distDim.textContent = fmt(distCm);
 
@@ -1396,8 +1478,16 @@ function initFitMove(){
 
     $('newSetBtn').addEventListener('click',()=>{
         $('sessionDone').style.display='none';
-        S.fitReps=0; $('repCount').textContent='0';
+        S.fitReps=0;
+        $('repCount').textContent='0';
         $('repPbar').style.width='0%';
+        $('startFitBtn').style.display='block';
+        $('startFitBtn').innerHTML=`${SVG_ICONS.fitness} Start Exercise`;
+        $('stopFitBtn').style.display='none';
+        $('phaseLabel').textContent='AWAITING START';
+        const dot=$('phaseDot');
+        if(dot) dot.className='phase-dot';
+        $('formHint').textContent='Choose an exercise and click Start to begin optical verification.';
     });
 }
 
@@ -1542,7 +1632,8 @@ function activateEcoMode(){
     
     // Pause Pomodoro study timer if running
     if(S.pomRunning){
-        clearInterval(S.pomInterval);
+        if(S.pomInterval) clearInterval(S.pomInterval);
+        S.pomInterval = null;
         S.pomRunning = false;
         S.pomPausedByEco = true;
         $('timerBtn').textContent = 'Start';
@@ -1561,6 +1652,7 @@ function deactivateEcoMode(){
         S.pomPausedByEco = false;
         S.pomRunning = true;
         $('timerBtn').textContent = 'Stop';
+        if(S.pomInterval) clearInterval(S.pomInterval);
         S.pomInterval = setInterval(()=>{
             // Check for presence in timer loop too in case webcam feed is inactive
             if(Date.now() - S.lastFaceDetectedTime > 6000){
@@ -1569,10 +1661,13 @@ function deactivateEcoMode(){
             S.pomSec--;
             updateTimerDisplay();
             if(S.pomSec<=0){
-                clearInterval(S.pomInterval); S.pomRunning=false;
-                S.pomSec=25*60; updateTimerDisplay();
-                $('timerBtn').textContent='Start';
-                $('stretchModal').style.display='flex';
+                clearInterval(S.pomInterval);
+                S.pomInterval = null;
+                S.pomRunning = false;
+                S.pomSec = 25*60;
+                updateTimerDisplay();
+                $('timerBtn').textContent = 'Start';
+                $('stretchModal').style.display = 'flex';
                 showToast('stretch','Break Time!','25 minutes completed — time for a mobility stretch!');
             }
         },1000);
@@ -1818,14 +1913,18 @@ function triggerAvatarUpdate(){
     const isGood = S.postureScore >= 75 || !S.cameraReady;
     const state  = isGood ? 'good' : 'bad';
 
-    // Unique key — only re-render if something actually changed
+    // Pick speech line and update speech bubble text without resetting video
+    const lines = AVATAR_LINES[char]?.[state] || AVATAR_LINES.goku.good;
+    const speechText = lines[Math.floor(Date.now() / 15000) % lines.length];
+    const speechEl = $('avatarSpeechText');
+    if(speechEl && speechEl.textContent !== `"${speechText}"`) {
+        speechEl.textContent = `"${speechText}"`;
+    }
+
+    // Unique key — only re-render if character, form, or posture state actually changed
     const key = `${char}-${form}-${state}`;
     if(key === _lastAvatarKey) return;   // nothing changed → let the video keep playing
     _lastAvatarKey = key;
-
-    // Pick speech line
-    const lines      = AVATAR_LINES[char][state];
-    const speechText = lines[Math.floor(Date.now() / 15000) % lines.length];
 
     // Resolve the video/image source
     const formKey = char === 'goku' ? form : 'default';
@@ -1868,9 +1967,6 @@ function triggerAvatarUpdate(){
                      style="max-height:220px;width:100%;object-fit:contain;border-radius:14px;display:block;">
             </div>`;
     }
-
-    const speechEl = $('avatarSpeechText');
-    if(speechEl) speechEl.textContent = `"${speechText}"`;
 }
 
 
